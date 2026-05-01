@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"sync/atomic"
 )
 
 // logging middleware
@@ -16,9 +15,6 @@ func middlewareLog(next http.Handler) http.Handler {
 }
 
 // middleware for loggging server requests
-type apiConfig struct {
-	fileserverHits atomic.Int32
-}
 
 func (cfg *apiConfig) middlwareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
