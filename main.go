@@ -47,12 +47,15 @@ func main() {
 	server := http.Server{Addr: ":" + port, Handler: mux}
 
 	// registering handlers to mux
-	mux.Handle("/app/", http.StripPrefix("/app", middlewareLog(http.FileServer(http.Dir(".")))))
+	mux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir("."))))
 	mux.HandleFunc("GET /api/healthz", handleHealth)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handleFilserverHits)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handleReset)
 	mux.HandleFunc("POST /api/users", apiCfg.handleCreateUser)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handleChirps)
+	mux.HandleFunc("GET /api/chirps", apiCfg.handleGetAllChrips)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handleGetChirpByID)
+	mux.HandleFunc("POST /api/login", apiCfg.handleLogin)
 
 	// add middleware
 	handler := apiCfg.middlwareMetricsInc(mux)

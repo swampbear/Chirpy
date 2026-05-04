@@ -1,13 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
+	"github.com/swampbear/chirpy/internal/auth"
 	"github.com/swampbear/chirpy/internal/database"
 )
 
@@ -79,18 +80,49 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 
 	chirpParams := database.CreateChirpParams{Body: cleanedText, UserID: uuid.NullUUID{UUID: userId, Valid: true}}
 
-	// save chirp to database
 	chirpdb, err := cfg.db.CreateChirp(r.Context(), chirpParams)
 
-	chirp := Chirp{ID: chirpdb.ID, CreatedAt: chirpdb.CreatedAt, UpdatedAt: chirpdb.UpdatedAt, Body: chirpdb.Body, UserId: chirpdb.UserID.UUID}
+	chirp := dbChirpToModelChirp(chirpdb)
 
 	respondWithJson(w, 201, chirp)
 
 }
 
+func (cfg *apiConfig) handleGetAllChrips(w http.ResponseWriter, r *http.Request) {
+	chirpsDB, err := cfg.db.GetAllChirps(r.Context())
+	if err != nil {
+		log.Println(err)
+		respondWithError(w, 500, "Error: failed to connect to database: %w")
+		return
+	}
+	chirps := []Chirp{}
+
+	for _, chirp := range chirpsDB {
+		chirps = append(chirps, dbChirpToModelChirp(chirp))
+	}
+	respondWithJson(w, 200, chirps)
+}
+
+func (cfg *apiConfig) handleGetChirpByID(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		respondWithError(w, 404, "Failed to parse id")
+		return
+	}
+	chirpDB, err := cfg.db.GetChirpByID(r.Context(), id)
+	if err != nil {
+		respondWithError(w, 404, "Error: chirp does not exist")
+		return
+	}
+	chirp := dbChirpToModelChirp(chirpDB)
+	respondWithJson(w, 200, chirp)
+
+}
+
 func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -102,8 +134,17 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		log.Println("ERROR: failed to decode parameters")
 		return
 	}
+	hashedPass, err := auth.HashPassword(params.Password)
 
-	dbuser, err := cfg.db.CreateUsers(r.Context(), params.Email)
+	if err != nil {
+		respondWithError(w, 400, "error: failed to hash password %w")
+		return
+
+	}
+
+	userDBParams := database.CreateUsersParams{Email: params.Email, HashedPassword: sql.NullString{String: hashedPass, Valid: true}}
+
+	dbuser, err := cfg.db.CreateUsers(r.Context(), userDBParams)
 	if err != nil {
 		w.WriteHeader(500)
 		log.Printf("ERROR: failed to create user: %w", err)
@@ -111,42 +152,31 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email}
 	respondWithJson(w, 201, user)
-
 }
 
-func cleanChirp(text string) string {
-	badWords := map[string]struct{}{
-		"kerfuffle": {},
-		"sharbert":  {},
-		"fornax":    {},
+func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
-	textSlice := strings.Split(text, " ")
-	for i, word := range textSlice {
-		if _, ok := badWords[strings.ToLower(word)]; ok {
-			textSlice[i] = "****"
-			continue
-		}
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	if err := decoder.Decode(&params); err != nil {
+		respondWithError(w, 401, "error: failed to decode parameters")
+		return
 	}
-	filteredText := strings.Join(textSlice, " ")
-	return filteredText
 
-}
-
-func respondWithJson(w http.ResponseWriter, code int, payload any) {
-	w.WriteHeader(code)
-	res, err := json.Marshal(payload)
+	dbuser, err := cfg.db.GetUserByEmail(r.Context(), params.Email)
 	if err != nil {
-		_ = fmt.Errorf("Failed to marshall payload message: %w", err)
+		respondWithError(w, 401, "Unauthorized")
+		return
 	}
-	w.Write(res)
-}
+	isHashed, err := auth.CheckPasswordHash(params.Password, dbuser.HashedPassword.String)
+	if err != nil || !isHashed {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
 
-func respondWithError(w http.ResponseWriter, code int, msg string) {
-	w.WriteHeader(code)
-	errormsg := map[string]string{"error": msg}
-	res, err := json.Marshal(errormsg)
-	if err != nil {
-		log.Printf("Failed to marshall error message: %w", err)
-	}
-	w.Write(res)
+	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email}
+	respondWithJson(w, 200, user)
 }
