@@ -37,7 +37,7 @@ func respondWithJson(w http.ResponseWriter, code int, payload any) {
 	w.WriteHeader(code)
 	res, err := json.Marshal(payload)
 	if err != nil {
-		_ = fmt.Errorf("Failed to marshall payload message: %w", err)
+		_ = fmt.Errorf("marshall payload message: %s", err)
 	}
 	w.Write(res)
 }
@@ -47,7 +47,7 @@ func respondWithError(w http.ResponseWriter, code int, msg string) {
 	errormsg := map[string]string{"error": msg}
 	res, err := json.Marshal(errormsg)
 	if err != nil {
-		log.Printf("Failed to marshall error message: %w", err)
+		log.Printf("marshall error message: %s", err)
 	}
 	w.Write(res)
 }

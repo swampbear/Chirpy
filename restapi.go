@@ -75,7 +75,7 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	cleanedText := cleanChirp(params.Body)
 	userId, err := uuid.Parse(params.UserId)
 	if err != nil {
-		fmt.Printf("failed to parse user id %w", err)
+		fmt.Printf("failed to parse user id %s", err)
 	}
 
 	chirpParams := database.CreateChirpParams{Body: cleanedText, UserID: uuid.NullUUID{UUID: userId, Valid: true}}
@@ -92,7 +92,7 @@ func (cfg *apiConfig) handleGetAllChrips(w http.ResponseWriter, r *http.Request)
 	chirpsDB, err := cfg.db.GetAllChirps(r.Context())
 	if err != nil {
 		log.Println(err)
-		respondWithError(w, 500, "Error: failed to connect to database: %w")
+		respondWithError(w, 500, "failed to connect to database: %w")
 		return
 	}
 	chirps := []Chirp{}
@@ -106,12 +106,12 @@ func (cfg *apiConfig) handleGetAllChrips(w http.ResponseWriter, r *http.Request)
 func (cfg *apiConfig) handleGetChirpByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("chirpID"))
 	if err != nil {
-		respondWithError(w, 404, "Failed to parse id")
+		respondWithError(w, 404, "failed to parse id")
 		return
 	}
 	chirpDB, err := cfg.db.GetChirpByID(r.Context(), id)
 	if err != nil {
-		respondWithError(w, 404, "Error: chirp does not exist")
+		respondWithError(w, 404, "chirp does not exist")
 		return
 	}
 	chirp := dbChirpToModelChirp(chirpDB)
@@ -131,13 +131,13 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&params)
 	if err != nil {
 		w.WriteHeader(400)
-		log.Println("ERROR: failed to decode parameters")
+		log.Println("failed to decode parameters")
 		return
 	}
 	hashedPass, err := auth.HashPassword(params.Password)
 
 	if err != nil {
-		respondWithError(w, 400, "error: failed to hash password %w")
+		respondWithError(w, 400, "failed to hash password %w")
 		return
 
 	}
@@ -147,7 +147,7 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	dbuser, err := cfg.db.CreateUsers(r.Context(), userDBParams)
 	if err != nil {
 		w.WriteHeader(500)
-		log.Printf("ERROR: failed to create user: %w", err)
+		log.Printf("failed to create user: %s", err)
 		return
 	}
 	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email}
@@ -162,7 +162,7 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	if err := decoder.Decode(&params); err != nil {
-		respondWithError(w, 401, "error: failed to decode parameters")
+		respondWithError(w, 401, "decode parameters")
 		return
 	}
 
