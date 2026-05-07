@@ -16,6 +16,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	tokenString    string
 }
 
 func main() {
@@ -32,18 +33,19 @@ func main() {
 	dbQueries := database.New(db)
 
 	// setup api config
-
 	platform := os.Getenv("PLATFORM")
+	tokenString := os.Getenv("TOKEN_STRING")
+
 	apiCfg := apiConfig{
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
 		platform:       platform,
+		tokenString:    tokenString,
 	}
 
+	// configure server
 	mux := http.NewServeMux()
-
 	port := "8080"
-
 	server := http.Server{Addr: ":" + port, Handler: mux}
 
 	// registering handlers to mux
@@ -61,6 +63,7 @@ func main() {
 	handler := apiCfg.middlwareMetricsInc(mux)
 	handler = middlewareLog(handler)
 
+	// start listening
 	log.Printf("Listening on port: %s", server.Addr)
 	http.ListenAndServe(server.Addr, handler)
 

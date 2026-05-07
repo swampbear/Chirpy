@@ -50,10 +50,10 @@ func (cfg *apiConfig) handleReset(w http.ResponseWriter, r *http.Request) {
 
 	w.Write([]byte(result))
 }
+
 func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		UserId string `json:"user_id"`
-		Body   string `json:"body"`
+		Body string `json:"body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -65,7 +65,7 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check limit
-	chirpyWordLimit := 140
+	chirpyWordLimit := CHIRPY_LIMIT
 
 	if len(params.Body) > chirpyWordLimit {
 		respondWithError(w, 400, "Chirp is to long")
@@ -73,15 +73,22 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanedText := cleanChirp(params.Body)
-	userId, err := uuid.Parse(params.UserId)
+
+	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		fmt.Printf("failed to parse user id %s", err)
+		respondWithError(w, 400, err.Error())
+		return
+	}
+	// check if jwt uuid matches returned user
+	userId, err := auth.ValidateJWT(token, cfg.tokenString)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
+		return
 	}
 
+	// retrieve chirp from database
 	chirpParams := database.CreateChirpParams{Body: cleanedText, UserID: uuid.NullUUID{UUID: userId, Valid: true}}
-
 	chirpdb, err := cfg.db.CreateChirp(r.Context(), chirpParams)
-
 	chirp := dbChirpToModelChirp(chirpdb)
 
 	respondWithJson(w, 201, chirp)
@@ -156,9 +163,11 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds int    `json:"expires_in_seconds"`
 	}
+
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	if err := decoder.Decode(&params); err != nil {
@@ -166,6 +175,7 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// get user
 	dbuser, err := cfg.db.GetUserByEmail(r.Context(), params.Email)
 	if err != nil {
 		respondWithError(w, 401, "Unauthorized")
@@ -177,6 +187,15 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email}
+	expirationTime := getExepirationTime(params.ExpiresInSeconds)
+
+	// create token
+	token, err := auth.MakeJWT(dbuser.ID, cfg.tokenString, expirationTime)
+	if err != nil {
+		respondWithError(w, 400, err.Error())
+		return
+	}
+
+	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email, Token: token}
 	respondWithJson(w, 200, user)
 }
