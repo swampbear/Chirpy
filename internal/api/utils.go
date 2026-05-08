@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/swampbear/chirpy/internal/auth"
 	"github.com/swampbear/chirpy/internal/database"
 )
 
@@ -36,16 +34,10 @@ func cleanChirp(text string) string {
 
 }
 
-func getExepirationTime(seconds int) time.Duration {
-	// configure expiration if unconfigured or zero set to 1 hour, or if over 1 hour limit it to one hour
+func isExpired(expDate time.Time) bool {
+	currentDate := time.Now()
 
-	if seconds == 0 || seconds > TOKEN_EXPIRATION_LIMIT_SECONDS {
-		seconds = TOKEN_EXPIRATION_LIMIT_SECONDS
-	}
-	// convert to duration
-	expirationTime := time.Second * time.Duration(seconds)
-
-	return expirationTime
+	return currentDate.After(expDate)
 
 }
 

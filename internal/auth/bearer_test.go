@@ -9,7 +9,7 @@ func TestGetBearerToken(t *testing.T) {
 
 	// arrange
 	header := http.Header{}
-	header.Add("Authorization", "Bearer testToken")
+	header.Add("Authorization", "Bearer  testToken     ")
 
 	// act
 	token, err := GetBearerToken(header)
@@ -27,6 +27,21 @@ func TestMissingBearerToken(t *testing.T) {
 
 	//arrange
 	header := http.Header{}
+
+	// act
+	_, err := GetBearerToken(header)
+
+	// assert
+	if err == nil {
+		t.Errorf("should not find bearertoken, but found: %s", err)
+		return
+	}
+}
+func TestWrongFormatBearerToken(t *testing.T) {
+
+	//arrange
+	header := http.Header{}
+	header.Add("Authorization", "Bearer")
 
 	// act
 	_, err := GetBearerToken(header)
