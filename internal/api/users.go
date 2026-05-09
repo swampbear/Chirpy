@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/swampbear/chirpy/internal/auth"
 	"github.com/swampbear/chirpy/internal/database"
 )
@@ -45,11 +46,7 @@ func (cfg *ApiConfig) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, 201, user)
 }
 
-func (cfg *ApiConfig) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
-	bearerToken, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, 401, err.Error())
-	}
+func (cfg *ApiConfig) HandleUpdateUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	// set up parameters struct and decode body
 	type parameters struct {
 		Email    string `json:"email"`
@@ -59,12 +56,6 @@ func (cfg *ApiConfig) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	params := parameters{}
 	if err := decoder.Decode(&params); err != nil {
 		respondWithError(w, 401, "decode parameters")
-		return
-	}
-	// get userid to run update
-	userId, err := auth.ValidateJWT(bearerToken, cfg.TokenString)
-	if err != nil {
-		respondWithError(w, 401, "validate jwt")
 		return
 	}
 	hashedPassword, err := auth.HashPassword(params.Password)

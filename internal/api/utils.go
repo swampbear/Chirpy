@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/swampbear/chirpy/internal/database"
 )
@@ -34,13 +33,6 @@ func cleanChirp(text string) string {
 
 }
 
-func isExpired(expDate time.Time) bool {
-	currentDate := time.Now()
-
-	return currentDate.After(expDate)
-
-}
-
 func respondWithJson(w http.ResponseWriter, code int, payload any) {
 	w.WriteHeader(code)
 	res, err := json.Marshal(payload)
@@ -56,6 +48,7 @@ func respondWithError(w http.ResponseWriter, code int, msg string) {
 	res, err := json.Marshal(errormsg)
 	if err != nil {
 		log.Printf("marshall error message: %s", err)
+		return
 	}
 	w.Write(res)
 }

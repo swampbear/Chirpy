@@ -3,37 +3,21 @@ package api
 import (
 	"encoding/json"
 	"github.com/google/uuid"
-	"github.com/swampbear/chirpy/internal/auth"
 	"github.com/swampbear/chirpy/internal/database"
 	"log"
 	"net/http"
 )
 
-func (cfg *ApiConfig) HandleChirps(w http.ResponseWriter, r *http.Request) {
-
-	// get bearer token from authorization header
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, 400, err.Error())
-		return
-	}
-
+func (cfg *ApiConfig) HandleChirps(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	type parameters struct {
 		Body string `json:"body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err = decoder.Decode(&params)
+	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, 500, "something went wrong")
-		return
-	}
-
-	// check if jwt uuid matches returned user
-	userId, err := auth.ValidateJWT(token, cfg.TokenString)
-	if err != nil {
-		respondWithError(w, 401, err.Error())
 		return
 	}
 
@@ -74,7 +58,7 @@ func (cfg *ApiConfig) HandleGetAllChrips(w http.ResponseWriter, r *http.Request)
 func (cfg *ApiConfig) HandleGetChirpByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("chirpID"))
 	if err != nil {
-		respondWithError(w, 404, "failed to parse id")
+		respondWithError(w, 404, "parse chirp id")
 		return
 	}
 	chirpDB, err := cfg.Db.GetChirpByID(r.Context(), id)
@@ -84,4 +68,29 @@ func (cfg *ApiConfig) HandleGetChirpByID(w http.ResponseWriter, r *http.Request)
 	}
 	chirp := dbChirpToModelChirp(chirpDB)
 	respondWithJson(w, 200, chirp)
+}
+
+func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
+	id, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		respondWithError(w, 404, "parse chirp id")
+		return
+	}
+	chirpDB, err := cfg.Db.GetChirpByID(r.Context(), id)
+	if err != nil {
+		respondWithError(w, 404, "chirp does not exist")
+		return
+	}
+	if chirpDB.UserID.UUID != userId {
+		respondWithError(w, 403, "unauthorized")
+		return
+	}
+	if err = cfg.Db.DeleteByID(r.Context(), id); err != nil {
+		respondWithError(w, 404, "delete chirp")
+		return
+	}
+
+	// return status for deletion was successfull
+	w.WriteHeader(204)
+
 }
