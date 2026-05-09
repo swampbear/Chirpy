@@ -48,13 +48,16 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiCfg.HandleFilserverHits)
 	mux.HandleFunc("POST /admin/reset", apiCfg.HandleReset)
 	mux.HandleFunc("POST /api/users", apiCfg.HandleCreateUser)
-	mux.HandleFunc("PUT /api/users", apiCfg.HandleUpdateUser)
-	mux.HandleFunc("POST /api/chirps", apiCfg.HandleChirps)
 	mux.HandleFunc("GET /api/chirps", apiCfg.HandleGetAllChrips)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.HandleGetChirpByID)
 	mux.HandleFunc("POST /api/login", apiCfg.HandleLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.HandleRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.HandleRevoke)
+
+	// protected endpoints
+	mux.Handle("PUT /api/users", apiCfg.MiddlewareAuth(apiCfg.HandleUpdateUser))
+	mux.Handle("POST /api/chirps", apiCfg.MiddlewareAuth(apiCfg.HandleChirps))
+	mux.Handle("DELETE /api/chirps/{chirpID}", apiCfg.MiddlewareAuth(apiCfg.HandleDeleteChirp))
 
 	// add middleware
 	handler := apiCfg.MiddlwareMetricsInc(mux)
