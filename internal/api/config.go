@@ -12,4 +12,5 @@ type ApiConfig struct {
 	Db             *database.Queries
 	Platform       string
 	TokenString    string
+	PolkaKey       string
 }

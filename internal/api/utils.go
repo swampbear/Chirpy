@@ -11,7 +11,7 @@ import (
 
 // takes in database chirp and parses to Chirp struct to control fields for json responses
 func parseChirp(dbchirp database.Chirp) Chirp {
-	chirp := Chirp{ID: dbchirp.ID, CreatedAt: dbchirp.CreatedAt, UpdatedAt: dbchirp.UpdatedAt, Body: dbchirp.Body, UserId: dbchirp.UserID.UUID}
+	chirp := Chirp{ID: dbchirp.ID, CreatedAt: dbchirp.CreatedAt, UpdatedAt: dbchirp.UpdatedAt, Body: dbchirp.Body, UserId: dbchirp.UserID}
 	return chirp
 }
 

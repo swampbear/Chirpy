@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/swampbear/chirpy/internal/auth"
 )
 
 func (cfg *ApiConfig) HandleWebhooks(w http.ResponseWriter, r *http.Request) {
@@ -25,6 +26,15 @@ func (cfg *ApiConfig) HandleWebhooks(w http.ResponseWriter, r *http.Request) {
 	// event handlers
 	switch params.Event {
 	case "user.upgraded":
+		apiKey, err := auth.GetApiKey(r.Header)
+		if err != nil {
+			w.WriteHeader(401)
+			return
+		}
+		if cfg.PolkaKey != apiKey {
+			w.WriteHeader(401)
+			return
+		}
 		userId, err := uuid.Parse(params.Data.UserId)
 		if err != nil {
 			respondWithError(w, 400, "parse uuid")

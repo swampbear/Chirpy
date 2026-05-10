@@ -29,12 +29,14 @@ func main() {
 	// setup api config
 	platform := os.Getenv("PLATFORM")
 	tokenString := os.Getenv("TOKEN_STRING")
+	polkaKey := os.Getenv("POLKA_KEY")
 
 	apiCfg := api.ApiConfig{
 		FileserverHits: atomic.Int32{},
 		Db:             dbQueries,
 		Platform:       platform,
 		TokenString:    tokenString,
+		PolkaKey:       polkaKey,
 	}
 
 	// configure server

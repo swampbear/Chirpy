@@ -6,22 +6,23 @@ import (
 	"strings"
 )
 
-func GetBearerToken(header http.Header) (string, error) {
+func GetApiKey(header http.Header) (string, error) {
+
 	fullAuthText := header.Get("Authorization")
 
 	if fullAuthText == "" {
-		return "", fmt.Errorf("no bearer token found in header")
+		return "", fmt.Errorf("no ApiKey token found in header")
 	}
 
 	fullAuthText = strings.TrimSpace(fullAuthText)
 	textArr := strings.Fields(fullAuthText)
 	var token string
 	if len(textArr) <= 1 {
-		return "", fmt.Errorf("recieved wrong format bearertoken")
+		return "", fmt.Errorf("not enough fields")
 	}
-	if textArr[0] != "Bearer" {
+	if textArr[0] != "ApiKey" {
 
-		return "", fmt.Errorf("no bearer identifier found")
+		return "", fmt.Errorf("no apikey identifier found")
 	}
 	token = textArr[1]
 
