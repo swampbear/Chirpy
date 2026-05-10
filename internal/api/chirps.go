@@ -2,10 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/google/uuid"
 	"github.com/swampbear/chirpy/internal/database"
-	"log"
-	"net/http"
 )
 
 func (cfg *ApiConfig) HandleChirps(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +31,7 @@ func (cfg *ApiConfig) HandleChirps(w http.ResponseWriter, r *http.Request) {
 
 	userId := r.Context().Value("userId").(uuid.UUID)
 	// retrieve chirp from database
-	chirpParams := database.CreateChirpParams{Body: cleanedText, UserID: uuid.NullUUID{UUID: userId, Valid: true}}
+	chirpParams := database.CreateChirpParams{Body: cleanedText, UserID: userId}
 	chirpdb, err := cfg.Db.CreateChirp(r.Context(), chirpParams)
 	chirp := parseChirp(chirpdb)
 
@@ -40,17 +40,35 @@ func (cfg *ApiConfig) HandleChirps(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) HandleGetAllChrips(w http.ResponseWriter, r *http.Request) {
-	chirpsDB, err := cfg.Db.GetAllChirps(r.Context())
+
+	chirpsDB := []database.Chirp{}
+	var err error
+	var uuidAuthor uuid.UUID
+
+	authorId := r.URL.Query().Get("author_id")
+	// check if autor id is passed in as parameter
+	if authorId != "" {
+		uuidAuthor, err = uuid.Parse(authorId)
+		if err != nil {
+			respondWithError(w, 400, "bad id: %w")
+			return
+		}
+		chirpsDB, err = cfg.Db.GetAllChirpsByAuthor(r.Context(), uuidAuthor)
+	} else {
+		chirpsDB, err = cfg.Db.GetAllChirps(r.Context())
+	}
+
 	if err != nil {
-		log.Println(err)
 		respondWithError(w, 500, "failed to connect to database: %w")
 		return
 	}
+
 	chirps := []Chirp{}
 
 	for _, chirp := range chirpsDB {
 		chirps = append(chirps, parseChirp(chirp))
 	}
+
 	respondWithJson(w, 200, chirps)
 }
 
@@ -85,7 +103,7 @@ func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter, r *http.Request) 
 
 	//get user id from context and check if it matches the foreign key in chirpDB
 	userId := r.Context().Value("userId").(uuid.UUID)
-	if chirpDB.UserID.UUID != userId {
+	if chirpDB.UserID != userId {
 		respondWithError(w, 403, "unauthorized")
 		return
 	}
