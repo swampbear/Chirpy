@@ -53,11 +53,11 @@ func main() {
 	mux.HandleFunc("POST /api/login", apiCfg.HandleLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.HandleRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.HandleRevoke)
-
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.HandleDeleteChirp)
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.HandleWebhooks)
 	// protected endpoints
 	mux.Handle("PUT /api/users", apiCfg.MiddlewareAuth(apiCfg.HandleUpdateUser))
 	mux.Handle("POST /api/chirps", apiCfg.MiddlewareAuth(apiCfg.HandleChirps))
-	mux.Handle("DELETE /api/chirps/{chirpID}", apiCfg.MiddlewareAuth(apiCfg.HandleDeleteChirp))
 
 	// add middleware
 	handler := apiCfg.MiddlwareMetricsInc(mux)

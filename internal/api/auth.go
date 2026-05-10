@@ -52,7 +52,9 @@ func (cfg *ApiConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// map to return user struct
-	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email, Token: token, RefreshToken: dbRefToken.Token}
+	user := parseUser(dbuser)
+	user.Token = token
+	user.RefreshToken = dbRefToken.Token
 	respondWithJson(w, 200, user)
 }
 

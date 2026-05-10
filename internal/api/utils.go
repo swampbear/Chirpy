@@ -17,7 +17,7 @@ func parseChirp(dbchirp database.Chirp) Chirp {
 
 // takes in database user and parses to User struct to control fields for json responses
 func parseUser(dbuser database.User) User {
-	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email}
+	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, IsChirpyRed: dbuser.IsChirpyRed.Bool, Email: dbuser.Email}
 	return user
 }
 
