@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -10,11 +9,18 @@ import (
 	"github.com/swampbear/chirpy/internal/database"
 )
 
-func dbChirpToModelChirp(chirpdb database.Chirp) Chirp {
-	chirp := Chirp{ID: chirpdb.ID, CreatedAt: chirpdb.CreatedAt, UpdatedAt: chirpdb.UpdatedAt, Body: chirpdb.Body, UserId: chirpdb.UserID.UUID}
+// takes in database chirp and parses to Chirp struct to control fields for json responses
+func parseChirp(dbchirp database.Chirp) Chirp {
+	chirp := Chirp{ID: dbchirp.ID, CreatedAt: dbchirp.CreatedAt, UpdatedAt: dbchirp.UpdatedAt, Body: dbchirp.Body, UserId: dbchirp.UserID.UUID}
 	return chirp
-
 }
+
+// takes in database user and parses to User struct to control fields for json responses
+func parseUser(dbuser database.User) User {
+	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email}
+	return user
+}
+
 func cleanChirp(text string) string {
 	badWords := map[string]struct{}{
 		"kerfuffle": {},
@@ -37,7 +43,8 @@ func respondWithJson(w http.ResponseWriter, code int, payload any) {
 	w.WriteHeader(code)
 	res, err := json.Marshal(payload)
 	if err != nil {
-		_ = fmt.Errorf("marshall payload message: %s", err)
+		log.Printf("marshall: %s", err)
+		return
 	}
 	w.Write(res)
 }
@@ -47,7 +54,7 @@ func respondWithError(w http.ResponseWriter, code int, msg string) {
 	errormsg := map[string]string{"error": msg}
 	res, err := json.Marshal(errormsg)
 	if err != nil {
-		log.Printf("marshall error message: %s", err)
+		log.Printf("marshall: %s", err)
 		return
 	}
 	w.Write(res)

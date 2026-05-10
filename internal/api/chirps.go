@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func (cfg *ApiConfig) HandleChirps(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
+func (cfg *ApiConfig) HandleChirps(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body string `json:"body"`
 	}
@@ -22,19 +22,18 @@ func (cfg *ApiConfig) HandleChirps(w http.ResponseWriter, r *http.Request, userI
 	}
 
 	// check limit
-	chirpyWordLimit := CHIRPY_LIMIT
-
-	if len(params.Body) > chirpyWordLimit {
+	if len(params.Body) > CHIRPY_LIMIT {
 		respondWithError(w, 400, "Chirp is to long")
 		return
 	}
 
 	cleanedText := cleanChirp(params.Body)
 
+	userId := r.Context().Value("userId").(uuid.UUID)
 	// retrieve chirp from database
 	chirpParams := database.CreateChirpParams{Body: cleanedText, UserID: uuid.NullUUID{UUID: userId, Valid: true}}
 	chirpdb, err := cfg.Db.CreateChirp(r.Context(), chirpParams)
-	chirp := dbChirpToModelChirp(chirpdb)
+	chirp := parseChirp(chirpdb)
 
 	respondWithJson(w, 201, chirp)
 
@@ -50,7 +49,7 @@ func (cfg *ApiConfig) HandleGetAllChrips(w http.ResponseWriter, r *http.Request)
 	chirps := []Chirp{}
 
 	for _, chirp := range chirpsDB {
-		chirps = append(chirps, dbChirpToModelChirp(chirp))
+		chirps = append(chirps, parseChirp(chirp))
 	}
 	respondWithJson(w, 200, chirps)
 }
@@ -66,12 +65,14 @@ func (cfg *ApiConfig) HandleGetChirpByID(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, 404, "chirp does not exist")
 		return
 	}
-	chirp := dbChirpToModelChirp(chirpDB)
+	chirp := parseChirp(chirpDB)
 	respondWithJson(w, 200, chirp)
 }
 
-func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
+func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter, r *http.Request) {
+	// get values from request
 	id, err := uuid.Parse(r.PathValue("chirpID"))
+
 	if err != nil {
 		respondWithError(w, 404, "parse chirp id")
 		return
@@ -81,12 +82,15 @@ func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter, r *http.Request, 
 		respondWithError(w, 404, "chirp does not exist")
 		return
 	}
+
+	//get user id from context and check if it matches the foreign key in chirpDB
+	userId := r.Context().Value("userId").(uuid.UUID)
 	if chirpDB.UserID.UUID != userId {
 		respondWithError(w, 403, "unauthorized")
 		return
 	}
 	if err = cfg.Db.DeleteByID(r.Context(), id); err != nil {
-		respondWithError(w, 404, "delete chirp")
+		respondWithError(w, 404, "failed to delete chirp")
 		return
 	}
 

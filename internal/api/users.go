@@ -42,11 +42,11 @@ func (cfg *ApiConfig) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		log.Printf("failed to create user: %s", err)
 		return
 	}
-	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email}
+	user := parseUser(dbuser)
 	respondWithJson(w, 201, user)
 }
 
-func (cfg *ApiConfig) HandleUpdateUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
+func (cfg *ApiConfig) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	// set up parameters struct and decode body
 	type parameters struct {
 		Email    string `json:"email"`
@@ -63,6 +63,8 @@ func (cfg *ApiConfig) HandleUpdateUser(w http.ResponseWriter, r *http.Request, u
 		respondWithError(w, 401, "hash password")
 		return
 	}
+
+	userId := r.Context().Value("userId").(uuid.UUID)
 	updateParams := database.UpdateUserByIdParams{Email: params.Email, HashedPassword: sql.NullString{String: hashedPassword, Valid: true}, ID: userId}
 
 	dbuser, err := cfg.Db.UpdateUserById(r.Context(), updateParams)
@@ -70,7 +72,7 @@ func (cfg *ApiConfig) HandleUpdateUser(w http.ResponseWriter, r *http.Request, u
 		respondWithError(w, 500, "update user")
 		return
 	}
-	user := User{ID: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email}
+	user := parseUser(dbuser)
 	// respond with 200
 	respondWithJson(w, 200, user)
 

@@ -1,10 +1,10 @@
 package api
 
 import (
+	"context"
 	"log"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/swampbear/chirpy/internal/auth"
 )
 
@@ -26,7 +26,7 @@ func MiddlewareLog(next http.Handler) http.Handler {
 }
 
 // auth middleware that check bearer token
-func (cfg *ApiConfig) MiddlewareAuth(next func(w http.ResponseWriter, r *http.Request, id uuid.UUID)) http.Handler {
+func (cfg *ApiConfig) MiddlewareAuth(next http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := auth.GetBearerToken(r.Header)
 		if err != nil {
@@ -39,7 +39,8 @@ func (cfg *ApiConfig) MiddlewareAuth(next func(w http.ResponseWriter, r *http.Re
 			respondWithError(w, 401, err.Error())
 			return
 		}
-		next(w, r, userId)
+		// add userId to context so it is available for the next handler function
+		ctx := context.WithValue(r.Context(), "userId", userId)
+		next(w, r.WithContext(ctx))
 	})
-
 }
